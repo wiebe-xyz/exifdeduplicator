@@ -1,0 +1,26 @@
+version: '3'
+
+services:
+  filelist:
+    image: deduplicator:latest
+    build:
+      dockerfile: Dockerfile
+      context: .
+    env_file:
+      - .docker.env
+    restart: always
+    container_name: deduplicator-filelist
+    entrypoint: python /app/src/filelist.py
+    volumes:
+      - ./data/source/:/app/data/source
+    networks:
+      - rabbitmq-exif
+      - web
+
+networks:
+  rabbitmq-exif:
+  web:
+    external: true
+
+volumes:
+  rabbitmq-data-exif:

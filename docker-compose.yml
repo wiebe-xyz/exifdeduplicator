@@ -1,0 +1,37 @@
+version: '3'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    restart: always
+    container_name: rabbitmq-exif
+    volumes:
+      # - ./etc/:/etc/rabbitmq/
+      - rabbitmq-data-exif/:/var/lib/rabbitmq/
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    ports:
+      - 5673:5672
+      - 15673:15672
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.rabbitmq.loadbalancer.server.port=15673"
+      - "traefik.http.routers.rabbitmq.rule=Host(`rabbit-exif.wiebe.xyz`)"
+      - "traefik.http.routers.rabbitmq.entrypoints=websecure"
+      - "traefik.http.routers.rabbitmq.tls.certresolver=letsencrypt"
+
+      - "traefik.http.routers.rabbitmq-insecure.rule=Host(`rabbit-exif.wiebe.xyz`)"
+      - "traefik.http.routers.rabbitmq-insecure.entrypoints=web"
+      - "traefik.docker.network=web"
+    networks:
+      - rabbitmq-exif
+      - web
+
+networks:
+  rabbitmq-exif:
+  web:
+    external: true
+
+volumes:
+  rabbitmq-data-exif:

@@ -1,0 +1,7 @@
+click==7.1.2
+exif==1.2.1
+pika==1.2.0
+pkg-resources==0.0.0
+plum-py==0.3.1
+py3exiv2==0.9.3
+python-dotenv==0.16.0

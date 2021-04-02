@@ -1,0 +1,11 @@
+src/plots
+src/histories
+src/analysed
+venv/
+src/**/*.png
+src/**/*.csv
+src/**/*.txt
+filtered.csv
+nasdaqlisted.txt
+analysed.csv
+data/
