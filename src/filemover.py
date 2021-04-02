@@ -1,8 +1,8 @@
 # !./venv/bin/env python
-import glob
 import json
 import os
 from datetime import datetime
+import time
 
 import shutil
 from pika import spec
@@ -36,11 +36,9 @@ def filemover_callback(
         basename = os.path.basename(exif['file'])
         ext = pathlib.Path(basename).suffix
 
-        # todo: newpath should keep in mind the next step (deduplication) and prefix datetimte-- to the filename
-        newpath = f"../data/target/{date.year}/{date.month}/{date.day}/{date.hour}{date.minute}{date.second}--{basename}"
+        newpath = f"../data/target/{date.year}/{date.month}/{date.day}/{int(time.mktime(date.timetuple()))}--{basename}"
 
         # check if new path exists, if so this will complicate things (publish to duplicate checker)
-
         if pathlib.Path(newpath).exists():
             print(f"target file exists (possible duplicate) {newpath}")
             ch.basic_publish(exchange=exchange, routing_key=duplicates_queue, body=body)
@@ -50,7 +48,6 @@ def filemover_callback(
         print(f"date: {date}, basename: {basename}, extension: {ext}, newpath: {newpath}")
         os.makedirs(pathlib.Path(newpath).parent, exist_ok=True)
         shutil.move(exif['file'], newpath)
-
 
         # ch.basic_publish(exchange=exchange, routing_key=exif_queue, body=bytes(json.dumps(exif), 'UTF-8'))
 
