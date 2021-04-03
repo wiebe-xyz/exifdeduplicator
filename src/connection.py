@@ -7,7 +7,7 @@ credentials = pika.PlainCredentials(settings['rabbit_user'], settings['rabbit_pa
 
 def connect() -> BlockingConnection:
     return pika.BlockingConnection(
-        pika.ConnectionParameters(settings['rabbit_host'], credentials=credentials)
+        pika.ConnectionParameters(settings['rabbit_host'], port=settings['rabbit_port'], credentials=credentials)
     )
 
 

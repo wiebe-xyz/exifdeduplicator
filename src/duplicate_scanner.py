@@ -10,11 +10,12 @@ from PIL import Image
 
 # from models import Duplicate, Similar
 
-exchange = 'deduplicate'
+exchange = 'exif_deduplicate'
 
-duplicates_queue = "duplicates_queue"
-exact_duplicate = "exact_duplicate"
-similar_queue = "similar_queue"
+duplicates_queue = "exif_duplicates_queue"
+exact_duplicate = "exif_exact_duplicate"
+other_queue = "exif_other_duplicate"
+similar_queue = "exif_similar_queue"
 
 
 def duplicate_scanner_fallback(
@@ -31,32 +32,44 @@ def duplicate_scanner_fallback(
         # md5 filematch, files are the exact same -> remove source
 
         # what to do with nef files (likeness through the roof but not the same)
+        # nef files aren't matched with jpg right now because of the filename not matching,
+        # but this will be a problem in the next step
 
-        # image likeness hash (check https://pypi.org/project/ImageHash/)
+        images_are_the_same, likeness = compare_images(exif)
 
-        hash = imagehash.average_hash(Image.open(exif['file']))
-        # 5027 is a nested exact duplicate
-        # 8402 is different (other angle == 20)
-        # 8404 is tweaked a bit but has the same exif (difference == 4)
-
-        otherhash = imagehash.average_hash(Image.open(exif['newpath']))
-
-        if hash == otherhash:
+        if images_are_the_same:
             ch.basic_publish(exchange=exchange, routing_key=exact_duplicate, body=bytes(json.dumps(exif), 'UTF-8'))
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
-        likeness = hash - otherhash
         if likeness >= 20:
             similar = exif
             similar['likeness'] = likeness
             ch.basic_publish(exchange=exchange, routing_key=similar_queue, body=bytes(json.dumps(similar), 'UTF-8'))
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            return
 
+        # what we've got left are files with the same name and exif creation time
+        # example; burst shots, 1970 creationdate, possibly
+
+        ch.basic_publish(exchange=exchange, routing_key=other_queue, body=bytes(json.dumps(exif), 'UTF-8'))
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except (TypeError, FileNotFoundError) as e:
         print(f"received error {e}")
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+
+
+def compare_images(exif):
+    # image likeness hash (check https://pypi.org/project/ImageHash/)
+    hash = imagehash.average_hash(Image.open(exif['file']))
+    # 5027 is a nested exact duplicate
+    # 8402 is different (other angle == 20)
+    # 8404 is tweaked a bit but has the same exif (difference == 4)
+    otherhash = imagehash.average_hash(Image.open(exif['newpath']))
+    likeness = hash - otherhash
+    images_are_the_same = hash == otherhash
+    return images_are_the_same, likeness
 
 
 def main():
@@ -69,10 +82,12 @@ def main():
     channel.queue_declare(queue=duplicates_queue)
     channel.queue_declare(queue=exact_duplicate)
     channel.queue_declare(queue=similar_queue)
+    channel.queue_declare(queue=other_queue)
 
     channel.queue_bind(queue=duplicates_queue, exchange=exchange)
     channel.queue_bind(queue=exact_duplicate, exchange=exchange)
     channel.queue_bind(queue=similar_queue, exchange=exchange)
+    channel.queue_bind(queue=other_queue, exchange=exchange)
 
     channel.basic_consume(duplicates_queue, duplicate_scanner_fallback, consumer_tag='duplicate_scanner')
     channel.start_consuming()

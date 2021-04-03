@@ -10,4 +10,5 @@ settings = {
     'rabbit_user': os.getenv("RABBITMQ_DEFAULT_USER"),
     'rabbit_pass': os.getenv("RABBITMQ_DEFAULT_PASS"),
     'rabbit_host': os.getenv("RABBITMQ_HOST"),
+    'rabbit_port': os.getenv("RABBITMQ_PORT"),
 }

@@ -7,10 +7,10 @@ from pika.exceptions import StreamLostError
 
 def main():
     channel = connection.channel()
-    queue = "filelist"
+    queue = "exif_filelist"
     channel.queue_declare(queue=queue)
     channel.basic_qos(prefetch_count=1)
-    exchange = 'deduplicate'
+    exchange = 'exif_deduplicate'
 
     channel.exchange_declare(exchange, durable=True)
     channel.queue_bind(queue=queue, exchange=exchange)

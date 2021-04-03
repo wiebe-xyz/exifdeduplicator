@@ -9,10 +9,10 @@ from pika.adapters.blocking_connection import BlockingChannel
 from connection import connection
 from pika.exceptions import StreamLostError
 
-exchange = 'deduplicate'
+exchange = 'exif_deduplicate'
 
-filelist_queue = "filelist"
-exif_queue = "exif"
+filelist_queue = "exif_filelist"
+exif_queue = "exif_exif"
 
 
 def read_exif_callback(

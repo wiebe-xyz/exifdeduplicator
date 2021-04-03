@@ -14,9 +14,9 @@ from pika.exceptions import StreamLostError
 
 # from models import Exif, Duplicate
 
-exchange = 'deduplicate'
-exif_queue = "exif"
-duplicates_queue = "duplicates_queue"
+exchange = 'exif_deduplicate'
+exif_queue = "exif_exif"
+duplicates_queue = "exif_duplicates_queue"
 
 
 def filemover_callback(

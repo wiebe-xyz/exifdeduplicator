@@ -8,9 +8,9 @@ from connection import connection
 from pika.exceptions import StreamLostError
 # from models import Duplicate
 
-exchange = 'deduplicate'
+exchange = 'exif_deduplicate'
 
-exact_duplicate = "exact_duplicate"
+exact_duplicate = "exif_exact_duplicate"
 
 
 def duplicate_remover(
