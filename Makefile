@@ -2,11 +2,27 @@ build:
 	@echo Use 'make start'
 
 reset-test-data:
-	rm -rf data/target/*
+	rm -rf data/target/* data/source/*
 	cp -r data/testdata/* data/source/
 
 start:
-	docker-compose -f docker-compose.yml -f docker-compose-deduplicator.yml up -d --build
+	docker-compose -f docker-compose.yml up -d --build
+	docker-compose -f docker-compose-deduplicator.yml up --build
+
+filelist:
+	docker-compose -f docker-compose-deduplicator.yml up --build filelist
+
+exifscanner:
+	docker-compose -f docker-compose-deduplicator.yml up -d --build exifscanner
+
+filemover:
+	docker-compose -f docker-compose-deduplicator.yml up -d --build filemover
+
+duplicate-scanner:
+	docker-compose -f docker-compose-deduplicator.yml up -d --build duplicate-scanner
+
+duplicate-remover:
+	docker-compose -f docker-compose-deduplicator.yml up -d --build duplicate-remover
 
 deploy:
 	git push && ssh wiebe@ssh.wiebe.xyz 'cd exifdeduplicator && git fetch && git reset --hard origin/master && make start-bot'

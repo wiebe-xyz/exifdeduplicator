@@ -1,13 +1,12 @@
 # !./venv/bin/env python
 import glob
-from connection import connection
 import sys
+from connection import connection
 from pika.exceptions import StreamLostError
 
 
 def main():
     channel = connection.channel()
-
     queue = "filelist"
     channel.queue_declare(queue=queue)
     channel.basic_qos(prefetch_count=1)

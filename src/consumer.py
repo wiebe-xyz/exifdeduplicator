@@ -1,10 +1,9 @@
 # !./venv/bin/env python
-from typing import Callable, Optional
-from connection import connection
-
-
 import click
 import sys
+
+from typing import Callable, Optional
+from connection import connection
 from pika.exceptions import StreamLostError
 
 callbacks = {

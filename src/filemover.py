@@ -1,22 +1,20 @@
 # !./venv/bin/env python
 import json
 import os
-from datetime import datetime
+import pathlib
+import shutil
+import sys
 import time
 
-import shutil
+from datetime import datetime
 from pika import spec
 from pika.adapters.blocking_connection import BlockingChannel
-
 from connection import connection
-import sys
 from pika.exceptions import StreamLostError
-import pathlib
 
-from src.models import Exif
+# from models import Exif, Duplicate
 
 exchange = 'deduplicate'
-
 exif_queue = "exif"
 duplicates_queue = "duplicates_queue"
 
@@ -27,7 +25,7 @@ def filemover_callback(
         properties: spec.BasicProperties,
         body: bytes
 ) -> None:
-    exif: Exif = json.loads(body.decode('UTF-8'))
+    exif = json.loads(body.decode('UTF-8'))
 
     try:
         date = datetime.strptime(exif['date'], '%Y-%m-%d %H:%M:%S')
@@ -41,7 +39,9 @@ def filemover_callback(
         # check if new path exists, if so this will complicate things (publish to duplicate checker)
         if pathlib.Path(newpath).exists():
             print(f"target file exists (possible duplicate) {newpath}")
-            ch.basic_publish(exchange=exchange, routing_key=duplicates_queue, body=body)
+            duplicate = exif
+            duplicate['newpath'] = newpath
+            ch.basic_publish(exchange=exchange, routing_key=duplicates_queue, body=json.dumps(duplicate))
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
@@ -52,7 +52,7 @@ def filemover_callback(
         # ch.basic_publish(exchange=exchange, routing_key=exif_queue, body=bytes(json.dumps(exif), 'UTF-8'))
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
-    except TypeError as e:
+    except (TypeError, FileNotFoundError) as e:
         print(f"received error {e}")
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 

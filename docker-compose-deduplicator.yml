@@ -8,11 +8,77 @@ services:
       context: .
     env_file:
       - .docker.env
-    restart: always
     container_name: deduplicator-filelist
     entrypoint: python /app/src/filelist.py
     volumes:
       - ./data/source/:/app/data/source
+    networks:
+      - rabbitmq-exif
+      - web
+
+  exifscanner:
+    image: deduplicator:latest
+    build:
+      dockerfile: Dockerfile
+      context: .
+    env_file:
+      - .docker.env
+    restart: always
+    container_name: deduplicator-exifscanner
+    entrypoint: python /app/src/exifscanner.py
+    volumes:
+      - ./data/source/:/app/data/source
+    networks:
+      - rabbitmq-exif
+      - web
+
+  filemover:
+    image: deduplicator:latest
+    build:
+      dockerfile: Dockerfile
+      context: .
+    env_file:
+      - .docker.env
+    restart: always
+    container_name: deduplicator-filemover
+    entrypoint: python /app/src/filemover.py
+    volumes:
+      - ./data/source/:/app/data/source
+      - ./data/target/:/app/data/target
+    networks:
+      - rabbitmq-exif
+      - web
+
+  duplicate-scanner:
+    image: deduplicator:latest
+    build:
+      dockerfile: Dockerfile
+      context: .
+    env_file:
+      - .docker.env
+    restart: always
+    container_name: deduplicator-duplicate-scanner
+    entrypoint: python /app/src/duplicate_scanner.py
+    volumes:
+      - ./data/source/:/app/data/source
+      - ./data/target/:/app/data/target
+    networks:
+      - rabbitmq-exif
+      - web
+
+  duplicate-remover:
+    image: deduplicator:latest
+    build:
+      dockerfile: Dockerfile
+      context: .
+    env_file:
+      - .docker.env
+    restart: always
+    container_name: deduplicator-duplicate-remover
+    entrypoint: python /app/src/duplicate_remover.py
+    volumes:
+      - ./data/source/:/app/data/source
+      - ./data/target/:/app/data/target
     networks:
       - rabbitmq-exif
       - web

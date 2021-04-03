@@ -1,17 +1,13 @@
 # !./venv/bin/env python
-import glob
 import json
 import os
-
 import pyexiv2
+import sys
+
 from pika import spec
 from pika.adapters.blocking_connection import BlockingChannel
-
 from connection import connection
-import sys
 from pika.exceptions import StreamLostError
-
-from src.models import Exif
 
 exchange = 'deduplicate'
 
@@ -34,12 +30,11 @@ def read_exif_callback(
     try:
         md = pyexiv2.ImageMetadata(path)
         md.read()
-
         datetime_original = md.get('Exif.Photo.DateTimeOriginal').value
         make = str(md.get('Exif.Image.Make').value)
         model = str(md.get('Exif.Image.Model').value)
 
-        exif: Exif = {
+        exif = {
             'file': path,
             'date': str(datetime_original),
             'make': make,
@@ -50,8 +45,8 @@ def read_exif_callback(
         ch.basic_publish(exchange=exchange, routing_key=exif_queue, body=bytes(json.dumps(exif), 'UTF-8'))
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
-    except TypeError as e:
-        print(f"received error {e}")
+    except (TypeError, AttributeError, FileNotFoundError) as e:
+        print(f"{path} received error {e}")
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 
