@@ -41,7 +41,11 @@ def filemover_callback(
             print(f"target file exists (possible duplicate) {newpath}")
             duplicate = exif
             duplicate['newpath'] = newpath
-            ch.basic_publish(exchange=exchange, routing_key=duplicates_queue, body=json.dumps(duplicate))
+            ch.basic_publish(
+                exchange=exchange,
+                routing_key=duplicates_queue,
+                body=bytes(json.dumps(duplicate), 'UTF-8')
+            )
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
