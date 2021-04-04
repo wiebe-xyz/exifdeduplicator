@@ -57,7 +57,7 @@ def filemover_callback(
         exif['hash'] = hash
 
         newpath = f"../data/target/{date.year}/{date.month}/{date.day}/{int(time.mktime(date.timetuple()))}--{hash}{ext}"
-        targetpath = f"../data/target/{date.year}/{date.month}/{date.day}/{filename}{ext}"
+        targetpath = f"../data/target/{date.year}/{date.month}/{date.day}/{filename}"
 
         # check if new path exists, if so this will complicate things (publish to duplicate checker)
         if pathlib.Path(newpath).exists():
