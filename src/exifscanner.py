@@ -1,9 +1,13 @@
 # !./venv/bin/env python
 import json
 import os
+import re
+from datetime import datetime
+from typing import Dict
+
 import pyexiv2
 import sys
-
+import pathlib
 from pika import spec
 from pika.adapters.blocking_connection import BlockingChannel
 from connection import connection
@@ -28,26 +32,48 @@ def read_exif_callback(
         return
 
     try:
-        md = pyexiv2.ImageMetadata(path)
-        md.read()
-        datetime_original = md.get('Exif.Photo.DateTimeOriginal').value
-        make = str(md.get('Exif.Image.Make').value)
-        model = str(md.get('Exif.Image.Model').value)
+        exif = read_metadata(path)
 
-        exif = {
-            'file': path,
-            'date': str(datetime_original),
-            'make': make,
-            'model': model
-        }
-
-        print(f"exif: {exif}")
         ch.basic_publish(exchange=exchange, routing_key=exif_queue, body=bytes(json.dumps(exif), 'UTF-8'))
-
         ch.basic_ack(delivery_tag=method.delivery_tag)
     except (TypeError, AttributeError, FileNotFoundError) as e:
         print(f"{path} received error {e}")
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+
+
+def read_metadata(path) -> Dict[str, str]:
+    exif: Dict[str, str] = {'file': path}
+
+    try:
+        md = pyexiv2.ImageMetadata(path)
+        md.read()
+        date_key = 'Exif.Photo.DateTimeOriginal'
+        make_key = 'Exif.Image.Make'
+        model_key = 'Exif.Image.Model'
+
+        if date_key in md.keys():
+            exif['date'] = str(md.get(date_key).value)
+        if model_key in md.keys():
+            exif['model'] = md.get(model_key).value
+        if make_key in md.keys():
+            exif['make'] = md.get(make_key).value
+    except Exception as e:
+        print(f"could not read exif for {path}, received error {e}")
+
+    stat = pathlib.Path(path).stat()
+    exif['ctime'] = str(datetime.fromtimestamp(stat.st_birthtime))
+    exif['mtime'] = str(datetime.fromtimestamp(stat.st_mtime))
+
+    # if date is not in exif, it might be in the filename
+    if "date" not in exif:
+        pattern = re.compile('(\d{4}-\d{2}-\d{2})')
+        match = pattern.search(path)
+        if match:
+            exif['date'] = match.group() + ' 00:00:00'
+        else:
+            exif['date'] = datetime.fromtimestamp(stat.st_birthtime).strftime('%Y-%m-%d %H:%M:%S')
+
+    return exif
 
 
 def main():

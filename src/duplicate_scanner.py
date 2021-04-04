@@ -35,9 +35,9 @@ def duplicate_scanner_fallback(
         # nef files aren't matched with jpg right now because of the filename not matching,
         # but this will be a problem in the next step
 
-        images_are_the_same, likeness = compare_images(exif)
+        likeness = compare_images(exif)
 
-        if images_are_the_same:
+        if likeness == 0:
             ch.basic_publish(exchange=exchange, routing_key=exact_duplicate, body=bytes(json.dumps(exif), 'UTF-8'))
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
@@ -68,8 +68,7 @@ def compare_images(exif):
     # 8404 is tweaked a bit but has the same exif (difference == 4)
     otherhash = imagehash.average_hash(Image.open(exif['newpath']))
     likeness = hash - otherhash
-    images_are_the_same = hash == otherhash
-    return images_are_the_same, likeness
+    return likeness
 
 
 def main():

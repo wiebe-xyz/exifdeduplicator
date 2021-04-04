@@ -5,6 +5,7 @@ import pathlib
 import shutil
 import sys
 import time
+import hashlib
 
 from datetime import datetime
 from pika import spec
@@ -16,7 +17,21 @@ from pika.exceptions import StreamLostError
 
 exchange = 'exif_deduplicate'
 exif_queue = "exif_exif"
+exif_moved = "exif_moved"
 duplicates_queue = "exif_duplicates_queue"
+
+
+def hashfile(file: str) -> str:
+    block_size = 1024 * 1024 * 5  # The size of each read (5Mb) from the file
+
+    file_hash = hashlib.sha256()
+    with open(file, 'rb') as f:
+        fb = f.read(block_size)
+        while len(fb) > 0:
+            file_hash.update(fb)
+            fb = f.read(block_size)
+
+    return file_hash.hexdigest()
 
 
 def filemover_callback(
@@ -33,8 +48,16 @@ def filemover_callback(
         # determine folder structure y/m/d/filename.extension
         basename = os.path.basename(exif['file'])
         ext = pathlib.Path(basename).suffix
+        filename = pathlib.Path(basename).name
+        exif['ext'] = ext
+        exif['filename'] = filename
 
-        newpath = f"../data/target/{date.year}/{date.month}/{date.day}/{int(time.mktime(date.timetuple()))}--{basename}"
+        # calculate hash for file and save the file with that name
+        hash = hashfile(exif['file'])
+        exif['hash'] = hash
+
+        newpath = f"../data/target/{date.year}/{date.month}/{date.day}/{int(time.mktime(date.timetuple()))}--{hash}{ext}"
+        targetpath = f"../data/target/{date.year}/{date.month}/{date.day}/{filename}{ext}"
 
         # check if new path exists, if so this will complicate things (publish to duplicate checker)
         if pathlib.Path(newpath).exists():
@@ -51,9 +74,15 @@ def filemover_callback(
 
         print(f"date: {date}, basename: {basename}, extension: {ext}, newpath: {newpath}")
         os.makedirs(pathlib.Path(newpath).parent, exist_ok=True)
-        shutil.move(exif['file'], newpath)
 
-        # ch.basic_publish(exchange=exchange, routing_key=exif_queue, body=bytes(json.dumps(exif), 'UTF-8'))
+        with open(newpath + ".meta", 'w+') as file:
+            json.dump(exif, file)
+
+        shutil.move(exif['file'], newpath)
+        exif['newpath'] = newpath
+        exif['targetpath'] = targetpath
+
+        ch.basic_publish(exchange=exchange, routing_key=exif_moved, body=bytes(json.dumps(exif), 'UTF-8'))
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
     except (TypeError, FileNotFoundError) as e:
@@ -69,9 +98,11 @@ def main():
     channel.exchange_declare(exchange, durable=True)
     channel.queue_declare(queue=exif_queue)
     channel.queue_declare(queue=duplicates_queue)
+    channel.queue_declare(queue=exif_moved)
 
     channel.queue_bind(queue=exif_queue, exchange=exchange)
     channel.queue_bind(queue=duplicates_queue, exchange=exchange)
+    channel.queue_bind(queue=exif_moved, exchange=exchange)
 
     channel.basic_consume(exif_queue, filemover_callback, consumer_tag='filemover')
     channel.start_consuming()

@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 build:
 	@echo Use 'make start'
 
@@ -40,14 +42,14 @@ init-server:
 update:
 	ssh wiebe@ssh.wiebe.xyz 'cd exifdeduplicator; docker-compose pull; make start'
 
-requirements:
+requirements: activate
 	python -m pip install -r requirements.txt
 
 activate:
-	. ./venv/bin/activate
+		source ./venv/bin/activate;
 
-install: activate
-	python -m pip install -r requirements.txt
+install:
+	source ./venv/bin/activate; python -m pip install -r requirements.txt
 
 freeze:
 	pip freeze > requirements.txt
