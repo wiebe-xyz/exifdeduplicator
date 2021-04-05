@@ -70,8 +70,15 @@ def read_metadata(path) -> Dict[str, str]:
         match = pattern.search(path)
         if match:
             exif['date'] = match.group() + ' 00:00:00'
-        else:
-            exif['date'] = datetime.fromtimestamp(stat.st_birthtime).strftime('%Y-%m-%d %H:%M:%S')
+
+    if "date" not in exif:
+        pattern = re.compile('(\d{4}\d{2}\d{2})')
+        match = pattern.search(path)
+        if match:
+            exif['date'] = match.group() + ' 00:00:00'
+
+    if "date" not in exif:
+        exif['date'] = datetime.fromtimestamp(stat.st_birthtime).strftime('%Y-%m-%d %H:%M:%S')
 
     return exif
 
