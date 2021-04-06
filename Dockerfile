@@ -2,6 +2,7 @@ FROM python:3.7
 RUN apt-get update
 RUN apt-get install -y build-essential
 RUN apt-get install -y libboost-python-dev python-all-dev libexiv2-dev
+RUN apt-get install -y cmake libboost-all-dev
 
 ENV VIRTUAL_ENV=/app/venv
 RUN python3 -m venv $VIRTUAL_ENV
