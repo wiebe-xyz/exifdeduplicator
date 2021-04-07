@@ -17,7 +17,7 @@ from pika.exceptions import StreamLostError
 
 exchange = 'exif_deduplicate'
 exif_queue = "exif_exif"
-exif_moved = "exif_moved"
+faces_recognized = "exif_faces_recognized"
 exif_duplicates_queue = "exif_duplicates_queue"
 exif_face_recognition = "exif_face_recognition"
 
@@ -76,14 +76,13 @@ def filemover_callback(
         print(f"date: {date}, basename: {basename}, extension: {ext}, newpath: {newpath}")
         os.makedirs(pathlib.Path(newpath).parent, exist_ok=True)
 
-        with open(newpath + ".meta", 'w+') as file:
+        with open(newpath + ".json", 'w+') as file:
             json.dump(exif, file)
 
         shutil.move(exif['file'], newpath)
         exif['newpath'] = newpath
         exif['targetpath'] = targetpath
 
-        ch.basic_publish(exchange=exchange, routing_key=exif_moved, body=bytes(json.dumps(exif), 'UTF-8'))
         ch.basic_publish(exchange=exchange, routing_key=exif_face_recognition, body=bytes(json.dumps(exif), 'UTF-8'))
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -100,12 +99,10 @@ def main():
     channel.exchange_declare(exchange, durable=True)
     channel.queue_declare(queue=exif_queue)
     channel.queue_declare(queue=exif_duplicates_queue)
-    channel.queue_declare(queue=exif_moved)
     channel.queue_declare(queue=exif_face_recognition)
 
     channel.queue_bind(queue=exif_queue, exchange=exchange)
     channel.queue_bind(queue=exif_duplicates_queue, exchange=exchange)
-    channel.queue_bind(queue=exif_moved, exchange=exchange)
     channel.queue_bind(queue=exif_face_recognition, exchange=exchange)
 
     channel.basic_consume(exif_queue, filemover_callback, consumer_tag='filemover')

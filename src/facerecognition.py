@@ -11,6 +11,7 @@ from PIL import Image, UnidentifiedImageError
 
 exchange = 'exif_deduplicate'
 exif_face_recognition = "exif_face_recognition"
+faces_recognized = "exif_faces_recognized"
 
 
 def face_recognition_callback(
@@ -29,22 +30,20 @@ def face_recognition_callback(
 
         # todo resize image to something smaller and use that to recognize faces
 
-        # save the faces to a seperate file
-
         with Image.open(filename) as image:
             for i in range(len(face_locations)):
                 face = face_locations[i]  # top , right, bottom, left
                 face_box = (face[3], face[0], face[1], face[2])  # left, top, right, bottom
 
                 face_crop = image.crop(face_box)
-                # face_crop.convert('RGB')
-
                 face_crop.save(f"{filename}-face-{i}.png")
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
     except (TypeError, FileNotFoundError, UnidentifiedImageError) as e:
         print(f"received error {e}")
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+
+    ch.basic_publish(exchange=exchange, routing_key=faces_recognized, body=bytes(json.dumps(exif), 'UTF-8'))
 
 
 def main():
@@ -54,7 +53,9 @@ def main():
 
     channel.exchange_declare(exchange, durable=True)
     channel.queue_declare(queue=exif_face_recognition)
+    channel.queue_declare(queue=faces_recognized)
 
+    channel.queue_bind(queue=faces_recognized, exchange=exchange)
     channel.queue_bind(queue=exif_face_recognition, exchange=exchange)
 
     channel.basic_consume(exif_face_recognition, face_recognition_callback, consumer_tag='face_recognition')
