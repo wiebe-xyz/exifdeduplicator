@@ -11,6 +11,14 @@ start:
 	docker-compose -f docker-compose.yml up -d --build
 	docker-compose -f docker-compose-deduplicator.yml up --build
 
+stop-all: stop stop-rabbit
+
+stop:
+	docker-compose -f docker-compose-deduplicator.yml down
+
+stop-rabbit:
+	docker-compose -f docker-compose.yml down
+
 filelist:
 	docker-compose -f docker-compose-deduplicator.yml up --build filelist
 
