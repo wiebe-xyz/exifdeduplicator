@@ -83,6 +83,23 @@ services:
       - rabbitmq-exif
       - web
 
+  face-recognition:
+    image: deduplicator:latest
+    build:
+      dockerfile: Dockerfile
+      context: .
+    env_file:
+      - .docker.env
+    restart: always
+    container_name: deduplicator-face-recognition
+    entrypoint: python /app/src/facerecognition.py
+    volumes:
+      - ./data/source/:/app/data/source
+      - ./data/target/:/app/data/target
+    networks:
+      - rabbitmq-exif
+      - web
+
 networks:
   rabbitmq-exif:
   web:

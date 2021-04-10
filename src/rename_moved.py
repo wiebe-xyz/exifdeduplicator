@@ -2,9 +2,9 @@
 import json
 import shutil
 import sys
+import os
 import glob
 import pathlib as pathlib
-
 from pika import spec
 from pika.adapters.blocking_connection import BlockingChannel
 from connection import connection
@@ -23,8 +23,18 @@ def filemover_callback(
     exif = json.loads(body.decode('UTF-8'))
 
     try:
-        shutil.move(f"{exif['newpath']}.json{exif['targetpath']}.json")
-        shutil.move(exif['newpath'], exif['targetpath'])
+        if not os.path.exists(exif['newpath']):
+            print(f"file is already gone {exif['targetpath']} -> {exif['newpath']}")
+            ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            return
+
+        if not os.path.exists(f"{exif['targetpath']}.json"):
+            shutil.move(f"{exif['newpath']}.json", f"{exif['targetpath']}.json")
+
+        if not os.path.exists(exif['targetpath']):
+            shutil.move(exif['newpath'], exif['targetpath'])
+        else:
+            print(f"duplicate filename, skipping rename action for {exif['targetpath']}")
 
         # find files with -face-x
         path = pathlib.Path(exif['newpath']).parent
@@ -36,7 +46,9 @@ def filemover_callback(
         filelist = glob.glob(f"{path}/{basename}*-face*")
 
         for file in filelist:
-            shutil.move(file, str(file).replace(basename, targetfilename))
+            # target filename might already exist (broken or resized files for example)
+            if not os.path.exists(targetfilename):
+                shutil.move(file, str(file).replace(basename, targetfilename))
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
     except (TypeError, FileNotFoundError) as e:
