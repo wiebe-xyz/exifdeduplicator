@@ -13,4 +13,4 @@ py3exiv2==0.9.3
 python-dotenv==0.17.0
 PyWavelets==1.1.1
 scipy==1.6.2
-six==1.15.0
+six==1.16.0
